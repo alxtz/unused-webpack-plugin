@@ -37,12 +37,33 @@ UnusedPlugin.prototype.apply = function apply(compiler) {
 
 module.exports = UnusedPlugin;
 
-function continueOrFail(failOnUnused, compilation, allFiles) {
+function continueOrFail(failOnUnused, compilation, obj) {
+  const { allFiles, filesByDirectory } = obj
   if (allFiles && allFiles.length > 0) {
     if (failOnUnused) {
       compilation.errors.push(new Error('Unused files found'));
     } else {
-      compilation.warnings.push(new Error('Unused files found'));
+      let fullFiles = []
+
+      filesByDirectory.forEach((files, index) => {
+        if (files.length === 0) return;
+        const directory = this.sourceDirectories[index];
+        const relative = this.root ? path.relative(this.root, directory) : directory;
+        fullFiles.push(chalk.blue.bold(relative + '/'))
+
+        files.forEach(file => {
+          fullFiles.push(chalk.yellow(`  • ${path.relative(directory, file)}`))
+        });
+      })
+
+      const filesString = fullFiles
+        .map((file, index) => {
+          return file
+        })
+        .join('\n')
+
+      const title = chalk.yellow.bold(`✖ ${allFiles.length} unused files found`)
+      compilation.warnings.push(new Error(`${title}\n\n${filesString}`));
     }
   }
 }
@@ -73,5 +94,5 @@ function display(filesByDirectory) {
   });
   process.stdout.write(chalk.green('\n*** Unused Plugin ***\n\n'));
 
-  return allFiles;
+  return { allFiles, filesByDirectory };
 }
